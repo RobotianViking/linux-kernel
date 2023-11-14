@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Linux Kernel Module",
+            "defines": [
+                "__KERNEL__",
+                "MODULE"
+            ],
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/include",
+                "/usr/local/include",
+                "/usr/lib/gcc/arm-linux-gnueabihf/8/include",
+                "/usr/src/linux-headers-5.10.103+/include",
+                "/usr/src/linux-headers-5.10.103-v7l+/arch/arm/include",
+                "/usr/src/linux-headers-5.10.103-v7l+/arch/arm/include/generated"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-arm"
+        }
+    ],
+    "version": 4
+}

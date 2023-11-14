@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "platform_device.h": "c",
+        "spi.h": "c",
+        "consumer.h": "c",
+        "err.h": "c",
+        "of.h": "c",
+        "kernel.h": "c",
+        "module.h": "c",
+        "crc32.h": "c",
+        "timekeeping.h": "c",
+        "timekeeping32.h": "c"
+    },
+    "C_Cpp.default.compilerPath": "/usr/bin/gcc",
+    "[c]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 8
+    }
+}
