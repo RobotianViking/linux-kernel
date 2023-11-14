@@ -9,7 +9,8 @@
         "module.h": "c",
         "crc32.h": "c",
         "timekeeping.h": "c",
-        "timekeeping32.h": "c"
+        "timekeeping32.h": "c",
+        "compiler_types.h": "c"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/gcc",
     "[c]": {
