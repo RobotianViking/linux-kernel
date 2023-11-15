@@ -1,5 +1,5 @@
 # linux-kernel
-Adventures in Linux Kernel. Modules, drivers, device tree etc.
+Adventures in the Linux Kernel. Modules, drivers, device tree etc.
 
 ## spi-protocol-sample
 A simple driver module for a connected MCU emulating a device. Uses
