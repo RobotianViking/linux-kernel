@@ -12,6 +12,11 @@
 
 #define SPI_MODULE      "spi_protocol_sample"
 #define RX_BUFFER_SIZE  10*1024*4
+// #define DEBUG_DUMP_SPI // DUMP SPI device on succesful probe
+// #define DEBUG_DUMP_CRC // DUMP data and CRC32 alternatives on each received
+                          // packet from SPI slave. Used for getting the right 
+                          // CRC32 from STM32F4 - which is somewhat challenging.
+
 /*
  *    DTS fragments: see spi-protocol-sample.dts
  */
@@ -42,7 +47,6 @@ static void __exit spi_module_exit(void);
 /**
  * @brief Dump spi device info for debug
 */
-// #define DEBUG_DUMP_SPI
 #ifdef DEBUG_DUMP_SPI
 static void dump_spi_device(struct spi_device *spidev) {
    dev_info(&spidev->dev, "SPI device dump\n");
@@ -60,7 +64,6 @@ static void dump_spi_device(struct spi_device *spidev) {
 #define DEBUG_DUMP_SPI_DEVICE(dev) 
 #endif
 
-// #define DEBUG_DUMP_CRC
 #ifdef DEBUG_DUMP_CRC
 /**
  * @brief Dump misc CRC32 computations for debug
@@ -168,13 +171,13 @@ static int spi_probe(struct spi_device *spidev) {
       return retval;
    }
    dev_info(&spidev->dev, "spi_probe success\n");
-   drvdata->busy = devm_gpiod_get(&spidev->dev, "busy", GPIOD_OUT_LOW);
+   drvdata->busy = devm_gpiod_get(&spidev->dev, "mycomp,busy", GPIOD_OUT_LOW);
    if (IS_ERR(drvdata->busy)) {
       dev_err(&spidev->dev, "gpiod_get_index failed for BUSY\n");
       return PTR_ERR(drvdata->busy);
    }
 
-   drvdata->ready = devm_gpiod_get(&spidev->dev, "ready", GPIOD_IN);
+   drvdata->ready = devm_gpiod_get(&spidev->dev, "mycomp,ready", GPIOD_IN);
    if (IS_ERR(drvdata->ready)) {
       dev_err(&spidev->dev, "gpiod_get failed for READY\n");
       return PTR_ERR(drvdata->busy);
@@ -220,7 +223,7 @@ static int spi_remove(struct spi_device *spidev)
 
 static const struct of_device_id spi_dt_ids[] = {
     {
-        .compatible = "nisse,spi-protocol-device",
+        .compatible = "mycomp,spi-protocol-device",
     },
     { /* sentry */ }
 };
@@ -229,7 +232,7 @@ static struct spi_driver spi_driver = {
     .probe = spi_probe,
     .remove = spi_remove,
     .driver = {
-        .name = "spi_protocol_driver",
+        .name = "spi-protocol-device",
         .of_match_table = of_match_ptr(spi_dt_ids),
         .owner = THIS_MODULE,
     },

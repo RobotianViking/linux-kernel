@@ -1,7 +1,7 @@
 /dts-v1/;
 /plugin/;
 / {
-	compatible = "brcm,bcm2835";
+	compatible = "brcm,bcm2711";
 
         fragment@0 {
                 target = <&spidev0>;
@@ -25,12 +25,12 @@
                         #size-cells = <0>;
 
                         spi_protocol_device@0 {
-                                compatible = "nisse,spi-protocol-device";
+                                compatible = "mycomp,spi-protocol-device";
                                 reg = <0x0>;
                                 spi-max-frequency = <1000000>;
                                 spi-bits-per-word = <8>;
-				busy-gpios = <&gpio 27 0>; 
-				ready-gpios = <&gpio 22 0>; 
+				mycomp,busy-gpios = <&gpio 27 0>; 
+				mycomp,ready-gpios = <&gpio 22 0>; 
                                 status = "okay";
                         };
                 };

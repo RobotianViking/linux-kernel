@@ -19,7 +19,7 @@ The handler reads a number of bytes on SPI each time it is called.
   |   |                 |    |     READY              |            |
   |   |  gpiod consumer +----+-----<------------------+            |
   |   |                 |    |                        |            |
-  |   |                 |    |     RESET              |            |
+  |   |                 |    |     BUSY               |            |
   |   |                 +----+----->------------------+            |
   |   |                 |    |                        |            |
   |   +-----------------+    |                        |            |
