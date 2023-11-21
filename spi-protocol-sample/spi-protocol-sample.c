@@ -180,7 +180,7 @@ static int module_probe(struct spi_device *spidev) {
         int retval;
         drvdata_t *drvdata;
 
-        DEV_DEBUG(&spidev->dev, "spi_probe\n");
+        DEV_DEBUG(&spidev->dev, "probing\n");
 
         drvdata = (drvdata_t *) devm_kzalloc(&spidev->dev,
                                         sizeof(drvdata_t), GFP_KERNEL);
@@ -192,11 +192,11 @@ static int module_probe(struct spi_device *spidev) {
                 dev_err(&spidev->dev, "Error in probe. Returned %d\n", retval);
                 return retval;
         }
-        DEV_DEBUG(&spidev->dev, "spi_probe success\n");
+        DEV_DEBUG(&spidev->dev, "spi_setup success\n");
         drvdata->busy = devm_gpiod_get(&spidev->dev,
-                                "mycomp,busy", GPIOD_OUT_LOW);
+                                "mycomp,busy", GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
         if (IS_ERR(drvdata->busy)) {
-                dev_err(&spidev->dev, "gpiod_get_index failed for BUSY\n");
+                dev_err(&spidev->dev, "gpiod_get failed for BUSY\n");
                 return PTR_ERR(drvdata->busy);
         }
 
@@ -238,7 +238,7 @@ static int module_remove(struct spi_device *spidev) {
         free_irq(drvdata->irq, spidev);
         gpiod_put(drvdata->ready);
         gpiod_put(drvdata->busy);
-        DEV_DEBUG(&spidev->dev, "spi_remove\n");
+        DEV_DEBUG(&spidev->dev, "module remove\n");
         return 0;
 };
 
@@ -246,7 +246,7 @@ static const struct of_device_id spi_dt_ids[] = {
         {
                 .compatible = "mycomp,spi-protocol-device",
         },
-        { /* sentry */ }
+        { /* sentinel */ }
 };
 
 static struct spi_driver spi_driver = {

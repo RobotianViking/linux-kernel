@@ -24,7 +24,7 @@
                         #address-cells = <1>;
                         #size-cells = <0>;
 
-                        spi_protocol_device@0 {
+                        MYCOMP_ADC_SPI_0_0: spi_protocol_device@0 {
                                 compatible = "mycomp,spi-protocol-device";
                                 reg = <0x0>;
                                 spi-max-frequency = <1000000>;
@@ -33,7 +33,16 @@
 				mycomp,ready-gpios = <&gpio 22 0>; 
                                 status = "okay";
                         };
+
+                        MYCOMP_ADC_SPI_0_1: spi_protocol_device@1 {
+                                compatible = "mycomp,spi-protocol-device";
+                                reg = <0x1>;
+                                spi-max-frequency = <1000000>;
+                                spi-bits-per-word = <8>;
+				mycomp,busy-gpios = <&gpio 27 0>; 
+				mycomp,ready-gpios = <&gpio 17 0>; 
+                                status = "okay";
+                        };
                 };
         };
-
 };
