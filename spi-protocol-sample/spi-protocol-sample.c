@@ -38,7 +38,7 @@ static irq_handler_t top_ready_handler = NULL; /* Use default top half */
 static irqreturn_t bottom_ready_handler(int irq, void *dev_id);
 static int get_block_sync(struct spi_device *spidev, size_t n, u8 *buf);
 static int module_probe(struct spi_device *spidev);
-static int module_remove(struct spi_device *spidev);
+static void module_remove(struct spi_device *spidev);
 static int __init spi_module_init(void);
 static void __exit spi_module_exit(void);
 
@@ -66,7 +66,8 @@ static void dump_spi_device(struct spi_device *spidev) {
 /**
  * @brief Dump misc CRC32 computations for debug
 */
-static void dump_crc32(struct device *dev) {
+static void dump_crc32(struct                 "/usr/src/linux-headers-6.1.0-rpi4-rpi-v8/include"
+device *dev) {
         drvdata_t *drvdata = (drvdata_t *) dev_get_drvdata(dev);
         u32 comp_crc = 0;
         u32 recv_crc = *( (u32*) &drvdata->rx_data[RX_BUFFER_SIZE - 4]);
@@ -229,17 +230,17 @@ static int module_probe(struct spi_device *spidev) {
         return 0;
 };
 
-static int module_remove(struct spi_device *spidev) {
+static void module_remove(struct spi_device *spidev) {
         drvdata_t *drvdata = spi_get_drvdata(spidev);
         if (!drvdata) {
                 dev_err(&spidev->dev, "Could not get driver data (remove).\n");
-                return -ENODEV;
+                //return -ENODEV;
         }
         free_irq(drvdata->irq, spidev);
         gpiod_put(drvdata->ready);
         gpiod_put(drvdata->busy);
         DEV_DEBUG(&spidev->dev, "module remove\n");
-        return 0;
+        //return 0;
 };
 
 static const struct of_device_id spi_dt_ids[] = {
