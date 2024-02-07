@@ -1,7 +1,6 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/cdev.h>
 #include <linux/gpio/consumer.h>
 #include <linux/spi/spi.h>
 #include <linux/interrupt.h>
@@ -10,18 +9,31 @@
 #include <linux/crc32.h>
 #include <linux/timekeeping.h>
 
-#define SPI_MODULE      "spi-protocol-device"
-#define RX_BUFFER_SIZE  10*1024*4
+#include <linux/fs.h>
+#include <linux/uaccess.h>
+#include <linux/cdev.h>
 
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Sample module for SPI driver with char dev");
+
+#define CDEV_SPI_DEVNO_NAME      "cdev_spi"
+#define CDEV_SPI_DEVNO_MINORS    2
+#define CDEV_SPI_MODULE          "cdev-spi-device"
+#define CDEV_SPI_RX_BUFFER_SIZE  10*1024*sizeof(uint32_t)
+#define CDEV_SPI_CLASS           "cdev-spi"
+
+static struct class *cdev_spi_class;
+static dev_t devno;
 /**
  * @brief Structure for holding device state across driver callbacks
  */
-typedef struct _drvdata_t {
+struct drvdata {
         int irq;                         /* IRQ for ready pin */
         struct gpio_desc *ready,         /* Input. Raised when data is ready */
                          *busy;          /* Output. Raised by when busy */
         u8 *rx_data;                     /* Data buffer for receiving */
-} drvdata_t;
+        struct cdev chardev;
+};
 
 
 #define DEV_DEBUG       dev_info
@@ -66,10 +78,11 @@ static void dump_spi_device(struct spi_device *spidev) {
 /**
  * @brief Dump misc CRC32 computations for debug
 */
-static void dump_crc32(struct device *dev) {
-        drvdata_t *drvdata = (drvdata_t *) dev_get_drvdata(dev);
+static void dump_crc32(struct                 "/usr/src/linux-headers-6.1.0-rpi4-rpi-v8/include"
+device *dev) {
+        struct drvdata_t *drvdata = (drvdata_t *) dev_get_drvdata(dev);
         u32 comp_crc = 0;
-        u32 recv_crc = *( (u32*) &drvdata->rx_data[RX_BUFFER_SIZE - 4]);
+        u32 recv_crc = *( (u32*) &drvdata->rx_data[CDEV_SPI_RX_BUFFER_SIZE - 4]);
 
         DEV_DEBUG(dev, "Received CRC: 0x%x\n", recv_crc);
         comp_crc = ether_crc(RX_BUFFER_SIZE - sizeof(u32),
@@ -119,7 +132,7 @@ static irqreturn_t bottom_ready_handler(int irq, void *dev_id) {
         u32 comp_crc;
         ktime_t spi_ticks;
         struct spi_device *spidev = (struct spi_device *) dev_id;
-        drvdata_t *drvdata = spi_get_drvdata(spidev);
+        struct drvdata *drvdata = spi_get_drvdata(spidev);
 
         /* Get state of READY GPIO pin */
         ready_pin = gpiod_get_value(drvdata->ready);
@@ -128,7 +141,7 @@ static irqreturn_t bottom_ready_handler(int irq, void *dev_id) {
 
         gpiod_set_value(drvdata->busy, 1);
         spi_ticks = ktime_get();
-        retval = get_block_sync(spidev, RX_BUFFER_SIZE, drvdata->rx_data);
+        retval = get_block_sync(spidev, CDEV_SPI_RX_BUFFER_SIZE, drvdata->rx_data);
         spi_ticks = ktime_get() - spi_ticks;
         gpiod_set_value(drvdata->busy, 0);
         if (retval) {
@@ -140,8 +153,8 @@ static irqreturn_t bottom_ready_handler(int irq, void *dev_id) {
 
         DEBUG_DUMP_CRC32(&spidev->dev);
         comp_crc = crc32_be(~0, (unsigned char *) drvdata->rx_data,
-                RX_BUFFER_SIZE - sizeof(u32));
-        recv_crc = *((u32 *) (&drvdata->rx_data[RX_BUFFER_SIZE - sizeof(u32)]));
+                CDEV_SPI_RX_BUFFER_SIZE - sizeof(u32));
+        recv_crc = *((u32 *) (&drvdata->rx_data[CDEV_SPI_RX_BUFFER_SIZE - sizeof(u32)]));
         if (comp_crc != recv_crc) {
                 dev_err(&spidev->dev,
                         "Error on SPI. Got CRC 0x%x, expected 0x%x\n",
@@ -178,14 +191,15 @@ static int get_block_sync(struct spi_device *spidev, size_t n, u8 *buf) {
 */
 static int module_probe(struct spi_device *spidev) {
         int retval;
-        drvdata_t *drvdata;
+        struct drvdata *drvdata;
 
         DEV_DEBUG(&spidev->dev, "probing\n");
 
-        drvdata = (drvdata_t *) devm_kzalloc(&spidev->dev,
-                                        sizeof(drvdata_t), GFP_KERNEL);
+        drvdata = (struct drvdata *) devm_kzalloc(&spidev->dev,
+                                        sizeof(struct drvdata), GFP_KERNEL);
         drvdata->rx_data = (u8 *) devm_kzalloc(&spidev->dev,
-                                        RX_BUFFER_SIZE+4, GFP_KERNEL);
+                                        CDEV_SPI_RX_BUFFER_SIZE+4, GFP_KERNEL);
+
 
         retval = spi_setup(spidev);
         if (retval < 0) {
@@ -193,6 +207,15 @@ static int module_probe(struct spi_device *spidev) {
                 return retval;
         }
         DEV_DEBUG(&spidev->dev, "spi_setup success\n");
+
+        /*
+         * Setup corresponding chardev.
+         * Must be done in an exclusive region to avoid collisions from multiple devs ??
+        */
+
+        /*
+         * Setup GPIO pins
+        */
         drvdata->busy = devm_gpiod_get(&spidev->dev,
                                 "mycomp,busy", GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
         if (IS_ERR(drvdata->busy)) {
@@ -230,20 +253,21 @@ static int module_probe(struct spi_device *spidev) {
 };
 
 static void module_remove(struct spi_device *spidev) {
-        drvdata_t *drvdata = spi_get_drvdata(spidev);
+        struct drvdata *drvdata = spi_get_drvdata(spidev);
         if (!drvdata) {
                 dev_err(&spidev->dev, "Could not get driver data (remove).\n");
-                return;
+                //return -ENODEV;
         }
         free_irq(drvdata->irq, spidev);
         gpiod_put(drvdata->ready);
         gpiod_put(drvdata->busy);
         DEV_DEBUG(&spidev->dev, "module remove\n");
+        //return 0;
 };
 
 static const struct of_device_id spi_dt_ids[] = {
         {
-                .compatible = "mycomp,spi-protocol-device",
+                .compatible = "mycomp,cdev-spi-device",
         },
         { /* sentinel */ }
 };
@@ -252,7 +276,7 @@ static struct spi_driver spi_driver = {
         .probe = module_probe,
         .remove = module_remove,
         .driver = {
-                .name = "spi-protocol-device",
+                .name = "cdev-spi-sample",
                 .of_match_table = of_match_ptr(spi_dt_ids),
                 .owner = THIS_MODULE,
         },
@@ -260,7 +284,13 @@ static struct spi_driver spi_driver = {
 
 static int __init spi_module_init(void)
 {
-        pr_info("%s: module init\n", SPI_MODULE);
+        pr_info("%s: module init\n", CDEV_SPI_MODULE);
+
+        // alloc_chrdev_region(&devno, 0, CDEV_SPI_DEVNO_MINORS, CDEV_SPI_DEVNO_NAME);
+        // cdev_init(&drvdata->chardev, cdev_spi_fops);
+        // cdev_add(&drvdata->chardev, devno, CDEV_SPI_DEVNO_MINORS);
+
+
         /* Register spi driver */
         spi_register_driver(&spi_driver);
         return 0;
@@ -269,7 +299,7 @@ static int __init spi_module_init(void)
 static void __exit spi_module_exit(void)
 {
         spi_unregister_driver(&spi_driver);
-        pr_info("%s: module exit\n", SPI_MODULE);
+        pr_info("%s: module exit\n", CDEV_SPI_MODULE);
 }
 
 module_init(spi_module_init);
